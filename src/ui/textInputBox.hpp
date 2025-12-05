@@ -3,13 +3,13 @@
 
 #include <SFML/Graphics.hpp>
 #include <string>
-#include <print>
+#include <functional>
 
 class TextInputBox : public sf::Drawable {
 public:
 	bool confirmed = false;
 
-	TextInputBox(sf::Vector2f size = {}, std::string name = "") : text(AssetManager::getInstance().getFont("Roboto")),
+	TextInputBox(sf::Vector2f size = {}) : text(AssetManager::getInstance().getFont("Roboto")),
 		confirmText(AssetManager::getInstance().getFont("Roboto")), cancelText(AssetManager::getInstance().getFont("Roboto")) {
 		setSize(size);
 		shape.setFillColor(sf::Color(37, 37, 43));
@@ -71,6 +71,8 @@ public:
 		}
 	}
 
+	std::function<void()> onConfirm;
+
 	void onEvent(sf::Event& event, sf::RenderWindow& window) {
 		if (auto mouse = event.getIf<sf::Event::MouseButtonReleased>()) {
 			if (mouse->button == sf::Mouse::Button::Left) {
@@ -85,9 +87,12 @@ public:
 					textBoxFocused = false;
 				}
 				if (confirmButton.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position, window.getDefaultView()))) {
-					confirmed = true;
-					shouldDraw = false;
-					text.setString("");
+					if (!content.empty()) {
+						if (onConfirm) onConfirm();
+						shouldDraw = false;
+						text.setString("");
+					}
+					
 				}
 				if (cancelButton.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position, window.getDefaultView()))) {
 					shouldDraw = false;

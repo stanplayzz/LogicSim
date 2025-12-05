@@ -1,18 +1,26 @@
 #pragma once
 #include "nodes/node.hpp"
 #include "nodes/wire.hpp"
+#include "nodes/chipViewer.hpp"
 #include "ui/textInputBox.hpp"
 #include "ui/contextMenu.hpp"
+#include "ui/toolbar.hpp"
 #include <SFML/Graphics.hpp>
 
-#include <map>
+class App;
 
 class Editor {
 public:
-	Editor(sf::RenderWindow& window);
+	Editor(sf::RenderWindow& window, App& app, std::string saveFile = "");
 	void update(sf::Time& deltaTime, sf::RenderWindow& window);
 	void onEvent(sf::Event& event, sf::RenderWindow& window);
+	void makeChip(sf::RenderWindow& window);
+	void save(sf::RenderWindow& window, std::string path = "");
 	void draw(sf::RenderWindow& window);
+	ChipViewer chipViewer;
+	std::vector<std::unique_ptr<Node>> nodes;
+	std::vector<Wire> wires;
+	std::string currentSave = "";
 private:
 	sf::View view;
 	float currentZoom = 1.f;
@@ -25,11 +33,11 @@ private:
 
 	float tileSize = 32.f;
 	sf::Vector2f worldSize{ 500.f, 500.f };
-	std::vector<std::unique_ptr<Node>> nodes;
-	std::vector<Wire> wires;
+
 
 	// UI
 	std::unique_ptr<TextInputBox> textInputBox;
 	ContextMenu contextMenu;
 	sf::RectangleShape darkenOverlay;
+	Toolbar toolbar;
 };

@@ -82,10 +82,12 @@ void InputNode::onEvent(sf::Event& event, sf::RenderWindow& window) {
 		}
 	}
 	if (auto mouse = event.getIf<sf::Event::MouseButtonPressed>()) {
+		isSelected = false;
 		if (mouse->button == sf::Mouse::Button::Right) {
 			boundingBox.setFillColor(sf::Color::Transparent);
 			if (dragPart.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position))) {
 				boundingBox.setFillColor(sf::Color(255, 255, 255, 50));
+				isSelected = true;
 			}
 		}
 		if (mouse->button == sf::Mouse::Button::Left) {
@@ -94,6 +96,7 @@ void InputNode::onEvent(sf::Event& event, sf::RenderWindow& window) {
 			if (dragPart.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position))) {
 				boundingBox.setFillColor(sf::Color(255, 255, 255, 50));
 				dragPartClicked = true;
+				isSelected = true;
 			}
 			if (circle.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position))) {
 				outPins.back().isHigh = !outPins.back().isHigh;
@@ -160,17 +163,20 @@ void OutputNode::onEvent(sf::Event& event, sf::RenderWindow& window) {
 		}
 	}
 	if (auto mouse = event.getIf<sf::Event::MouseButtonPressed>()) {
+		isSelected = false;
 		if (mouse->button == sf::Mouse::Button::Right) {
 			boundingBox.setFillColor(sf::Color::Transparent);
 			if (dragPart.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position))) {
 				boundingBox.setFillColor(sf::Color(255, 255, 255, 50));
+				isSelected = true;
 			}
 		}
 		if (mouse->button == sf::Mouse::Button::Left) {
 			boundingBox.setFillColor(sf::Color::Transparent);
 			dragPartClicked = false;
 			if (dragPart.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position))) {
-				boundingBox.setFillColor(sf::Color(255, 255, 255, 50)); 
+				boundingBox.setFillColor(sf::Color(255, 255, 255, 50));
+				isSelected = true;
 				dragPartClicked = true;
 			}
 		}
@@ -239,6 +245,7 @@ void Gate::setPosition(sf::Vector2f position) {
 }
 void Gate::onEvent(sf::Event& event, sf::RenderWindow& window) {
 	if (auto mouse = event.getIf<sf::Event::MouseButtonPressed>()) {
+		isSelected = false;
 		if (mouse->button == sf::Mouse::Button::Right) {
 			boundingBox.setFillColor(sf::Color::Transparent);
 			if (body.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position))) {

@@ -1,5 +1,6 @@
 #include "saveLoad.hpp"
 #include <fstream>
+#include <filesystem>
 #include <print>
 #include <unordered_map>
 
@@ -42,17 +43,15 @@ void saveNode(std::ofstream& out, const Node& n) {
 	auto pos = n.getPosition();
 	out.write((char*)&pos, sizeof(pos));
 
-	//// input pins
-	//int inCount = n.inPins.size();
-	//out.write((char*)&inCount, sizeof(inCount));
-	//for (auto& p : n.inPins) 
-	//	savePin(out, p);
+	int inCount = n.inPins.size();
+	out.write((char*)&inCount, sizeof(inCount));
+	for (auto& p : n.inPins)
+		savePin(out, p);
 
-	//// output pins
-	//int outCount = n.outPins.size();
-	//out.write((char*)&outCount, sizeof(outCount));
-	//for (auto& p : n.outPins)
-	//	savePin(out, p);
+	int outCount = n.outPins.size();
+	out.write((char*)&outCount, sizeof(outCount));
+	for (auto& p : n.outPins)
+		savePin(out, p);
 
 	// chip nodes
 	if (n.nodeType == NodeType::Chip) {
@@ -69,48 +68,51 @@ void saveNode(std::ofstream& out, const Node& n) {
 		out.write((char*)&wireCount, sizeof(wireCount));
 		for (auto& w : chip.internalWires)
 			saveWire(out, w);
-
-		/*int inCount = chip.inPins.size();
-		out.write((char*)&inCount, sizeof(inCount));
-		for (auto& p : chip.inPins)
-			out.write((char*)&p.id, sizeof(p.id));
-
-		int outCount = chip.outPins.size();
-		out.write((char*)&outCount, sizeof(outCount));
-		for (auto& p : chip.outPins)
-			out.write((char*)&p.id, sizeof(p.id));*/
-
-		// input maps
-		//int mapCount = chip.inputMaps.size();
-		//out.write((char*)&mapCount, sizeof(mapCount));
-		//for (auto& m : chip.inputMaps) {
-		//	out.write((char*)&m.chipPin->id, sizeof(int));
-		//	out.write((char*)&m.nodePin->id, sizeof(int));
-		//}
-
-		//// output maps
-		//mapCount = chip.outputMaps.size();
-		//out.write((char*)&mapCount, sizeof(mapCount));
-		//for (auto& m : chip.outputMaps) {
-		//	out.write((char*)&m.chipPin->id, sizeof(int));
-		//	out.write((char*)&m.nodePin->id, sizeof(int));
-		//}
 	}
 }
 
-void saveCircuit(const std::string& path, const std::vector<std::unique_ptr<Node>>& nodes, const std::vector<Wire>& wires) {
+static void assignIdsRecursive(Node* node, int& nextId) {
+	node->id = nextId++;
+	for (auto& p : node->inPins)  p.id = nextId++;
+	for (auto& p : node->outPins) p.id = nextId++;
+
+	if (node->nodeType == NodeType::Chip) {
+		auto& chip = static_cast<Chip&>(*node);
+		for (auto& inner : chip.internalNodes) {
+			assignIdsRecursive(inner.get(), nextId);
+		}
+	}
+}
+
+void saveCircuit(const std::string& folder, const std::string& name, const std::vector<std::unique_ptr<Node>>& nodes, const std::vector<Wire>& wires) {
+	auto path = folder;
+	auto finalName = name;
+	if (name != "") {
+		auto saveCount = 0;
+		for (auto& entry : std::filesystem::directory_iterator(folder)) {
+			saveCount++;
+		}
+		path = folder + "/SaveFile" + std::to_string(saveCount) + ".ls";
+	}
+	else {
+		std::ifstream in(path, std::ios::binary);
+		finalName = readString(in);
+	}
+
+
 	std::ofstream out(path, std::ios::binary);
 	if (!out.is_open()) {
 		std::println("Failed to open save file at path: {}", path);
 		return;
 	}
 
+	// save name
+	writeString(out, finalName);
+
 	// assign IDs
 	int nextId = 1;
 	for (auto& n : nodes) {
-		n->id = nextId++;
-		for (auto& p : n->inPins) p.id = nextId++;
-		for (auto& p : n->outPins) p.id = nextId++;
+		assignIdsRecursive(n.get(), nextId);
 	}
 
 	// write nodes
@@ -203,36 +205,39 @@ std::unique_ptr<Node> readNode(std::ifstream& in) {
 
 	node->id = id;
 	node->name = name;
-	node->setPosition(pos);
+	
 
-	// input pins
-	//int inCount;
-	//in.read((char*)&inCount, sizeof(inCount));
-	//node->inPins.reserve(inCount);
-	//for (int i = 0; i < inCount; i++) {
-	//	Pin p = readPin(in);
-	//	node->inPins.push_back(p);
-	//	pinMap[p.id] = &node->inPins.back();
-	//}
+	int inCount;
+	in.read((char*)&inCount, sizeof(inCount));
+	node->inPins.clear();
+	node->inPins.reserve(inCount);
+	for (int i = 0; i < inCount; i++) {
+		Pin p = readPin(in);
+		node->inPins.push_back(p);
+		pinMap[p.id] = &node->inPins.back();
+	}
 
-	//// output pins
-	//int outCount;
-	//in.read((char*)&outCount, sizeof(outCount));
-	//node->outPins.reserve(outCount);
-	//for (int i = 0; i < outCount; i++) {
-	//	Pin p = readPin(in);
-	//	node->outPins.push_back(p);
-	//	pinMap[p.id] = &node->outPins.back();
-	//}
+	int outCount;
+	in.read((char*)&outCount, sizeof(outCount));
+	node->outPins.clear();
+	node->outPins.reserve(outCount);
+	for (int i = 0; i < outCount; i++) {
+		Pin p = readPin(in);
+		node->outPins.push_back(p);
+		pinMap[p.id] = &node->outPins.back();
+	}
 
 	if (type == NodeType::Chip) {
-		auto& chip = static_cast<Chip&>(*node);
+		auto& chip = dynamic_cast<Chip&>(*node);
 
 		// internal nodes
 		int internalCount;
 		in.read((char*)&internalCount, sizeof(internalCount));
 		for (int i = 0; i < internalCount; i++) {
-			chip.internalNodes.push_back(readNode(in)); 
+			auto node = readNode(in);
+			for (auto& p : node->inPins)  pinMap[p.id] = &p;
+			for (auto& p : node->outPins) pinMap[p.id] = &p;
+			chip.internalNodes.push_back(std::move(node));
 		}
 
 		// internal wires
@@ -242,66 +247,20 @@ std::unique_ptr<Node> readNode(std::ifstream& in) {
 			chip.internalWires.push_back(readWire(in));
 		}
 
-		/*std::vector<int> savedInIds;
-		std::vector<int> savedOutIds;
-
-		int inCount;
-		in.read((char*)&inCount, sizeof(inCount));
-		savedInIds.resize(inCount);
-		for (int& id : savedInIds) in.read((char*)&id, sizeof(id));
-
-		int outCount;
-		in.read((char*)&outCount, sizeof(outCount));
-		savedOutIds.resize(outCount);
-		for (int& id : savedOutIds) in.read((char*)&id, sizeof(id));*/
-
 		chip.initChip();
+		for (auto& n : chip.internalNodes) {
+			for (auto& p : n->inPins)  pinMap[p.id] = &p;
+			for (auto& p : n->outPins) pinMap[p.id] = &p;
+		}
 
-		//// 3. assign IDs onto real pins
-		//for (int i = 0; i < inCount; i++) {
-		//	chip.inPins[i].id = savedInIds[i];
-		//	pinMap[savedInIds[i]] = &chip.inPins[i];
-		//}
-		//for (int i = 0; i < outCount; i++) {
-		//	chip.outPins[i].id = savedOutIds[i];
-		//	pinMap[savedOutIds[i]] = &chip.outPins[i];
-		//}
-
-		//// input maps
-		//int mapCount;
-		//in.read((char*)&mapCount, sizeof(mapCount));
-		//chip.inputMaps.clear();
-		//chip.inputMaps.resize(mapCount);
-		//for (int i = 0; i < mapCount; i++) {
-		//	int chipId, nodeId;
-		//	in.read((char*)&chipId, sizeof(chipId));
-		//	in.read((char*)&nodeId, sizeof(nodeId));
-		//	if (pinMap[chipId]) {
-		//		std::println("chip");
-
-		//	}
-		//	if (pinMap[nodeId]) {
-		//		std::println("node");
-
-		//	}
-		//	chip.inputMaps[i].chipPin = pinMap[chipId];
-		//	chip.inputMaps[i].nodePin = pinMap[nodeId];
-		//}
-
-		//// output maps
-		//in.read((char*)&mapCount, sizeof(mapCount));
-		//chip.outputMaps.clear();
-		//chip.outputMaps.resize(mapCount);
-		//for (int i = 0; i < mapCount; i++) {
-		//	int chipId, nodeId;
-		//	in.read((char*)&chipId, sizeof(chipId));
-		//	in.read((char*)&nodeId, sizeof(nodeId));
-		//	chip.outputMaps[i].chipPin = pinMap[chipId];
-		//	chip.outputMaps[i].nodePin = pinMap[nodeId];
-		//}
+		// (re)move nodes to reset positions relative to the node, like pins and wires
+		for (auto& n : chip.internalNodes) {
+			n->setPosition(n->getPosition());
+		}
 
 		chip.hasBeenInit = true;
 	}
+	node->setPosition(pos);
 	return node;
 }
 
@@ -316,17 +275,21 @@ void loadCircuit(const std::string& path, std::vector<std::unique_ptr<Node>>& no
 	nodes.clear();
 	wires.clear();
 
+	// read save name
+	std::string name = readString(in);
+	
 	// read nodes
 	int nodeCount;
 	in.read((char*)&nodeCount, sizeof(nodeCount));
 	for (int i = 0; i < nodeCount; i++) 
-		nodes.push_back(readNode(in));
+		nodes.push_back(std::move(readNode(in)));
 
 	// read wires
 	int wireCount;
 	in.read((char*)&wireCount, sizeof(wireCount));
-	for (int i = 0; i < wireCount; i++)
+	for (int i = 0; i < wireCount; i++) {
 		wires.push_back(readWire(in));
+	}
 
 	// (re)move nodes to their position to update all items like pins and wires
 	for (auto& n : nodes) {

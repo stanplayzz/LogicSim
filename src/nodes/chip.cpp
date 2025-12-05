@@ -18,25 +18,6 @@ Chip::Chip(std::vector<std::unique_ptr<Node>>& nodes, std::vector<Wire>& wires, 
 	}
 	wires.clear();
 
-	initChip();
-
-	hasBeenInit = true;
-}
-
-Chip::Chip() : text(AssetManager::getInstance().getFont("Roboto")) {}
-
-void Chip::initChip() {
-	nodeType = NodeType::Chip;
-	text.setCharacterSize(charSize);
-	text.setString(name);
-	body.setSize(text.getGlobalBounds().size + sf::Vector2f(textPadding, textPadding));
-	body.setFillColor(sf::Color(255, 92, 74));
-	body.setOutlineThickness(12.f);
-	body.setOutlineColor(sf::Color(body.getFillColor().r * 0.7, body.getFillColor().g * 0.7, body.getFillColor().b * 0.7));
-	boundingBox.setSize(body.getSize() + sf::Vector2f(boundingPadding + body.getOutlineThickness(),
-		boundingPadding + body.getOutlineThickness()) * 2.f);
-	boundingBox.setFillColor(sf::Color::Transparent);
-
 	int in = 0;
 	int out = 0;
 	for (auto& node : internalNodes) {
@@ -55,12 +36,45 @@ void Chip::initChip() {
 		outPins.push_back(Pin(PinType::Output));
 	}
 
+	initChip();
+
+	hasBeenInit = true;
+}
+
+Chip::Chip() : text(AssetManager::getInstance().getFont("Roboto")) {}
+
+void Chip::initChip() {
+	nodeType = NodeType::Chip;
+	text.setCharacterSize(charSize);
+	text.setString(name);
+	body.setSize(text.getGlobalBounds().size + sf::Vector2f(textPadding, textPadding));
+	body.setFillColor(sf::Color(255, 92, 74));
+	body.setOutlineThickness(12.f);
+	body.setOutlineColor(sf::Color(body.getFillColor().r * 0.7, body.getFillColor().g * 0.7, body.getFillColor().b * 0.7));
+	boundingBox.setSize(body.getSize() + sf::Vector2f(boundingPadding + body.getOutlineThickness(),
+		boundingPadding + body.getOutlineThickness()) * 2.f);
+	boundingBox.setFillColor(sf::Color::Transparent);
+	
+
+	int in = 0;
+	int out = 0;
+	for (auto& node : internalNodes) {
+		if (node->nodeType == NodeType::Input) {
+			in++;
+		}
+		else if (node->nodeType == NodeType::Output) {
+			out++;
+		}
+	}
+
 	int maxPins = std::max(in, out);
 	if (body.getSize().y + body.getOutlineThickness() * 2.f < (maxPins + 1) * 32.f) {
 		body.setSize({ body.getSize().x, (maxPins + 1) * 32.f });
 		boundingBox.setSize(body.getSize() + sf::Vector2f(boundingPadding + body.getOutlineThickness(),
 			boundingPadding + body.getOutlineThickness()) * 2.f);
 	}
+
+	
 
 	size_t inIndex = 0, outIndex = 0;
 	for (auto& node : internalNodes) {
@@ -130,15 +144,19 @@ void Chip::onEvent(sf::Event& event, sf::RenderWindow& window) {
 	if (auto mouse = event.getIf<sf::Event::MouseButtonPressed>()) {
 		if (mouse->button == sf::Mouse::Button::Right) {
 			boundingBox.setFillColor(sf::Color::Transparent);
+			isSelected = false;
 			if (body.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position))) {
 				boundingBox.setFillColor(sf::Color(255, 255, 255, 50));
+				isSelected = true;
 			}
 		}
 		if (mouse->button == sf::Mouse::Button::Left) {
 			boundingBox.setFillColor(sf::Color::Transparent);
 			dragPartClicked = false;
+			isSelected = false;
 			if (body.getGlobalBounds().contains(window.mapPixelToCoords(mouse->position))) {
 				boundingBox.setFillColor(sf::Color(255, 255, 255, 50));
+				isSelected = true;
 				dragPartClicked = true;
 			}
 		}

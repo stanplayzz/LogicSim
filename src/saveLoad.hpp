@@ -4,7 +4,8 @@
 
 
 
-void saveCircuit(const std::string& path, const std::vector<std::unique_ptr<Node>>& nodes, const std::vector<Wire>& wires);
+void saveCircuit(const std::string& folder, const std::string& name, const std::vector<std::unique_ptr<Node>>& nodes, const std::vector<Wire>& wires);
 
 
+std::string readString(std::ifstream& in);
 void loadCircuit(const std::string& path, std::vector<std::unique_ptr<Node>>& nodes, std::vector<Wire>& wires);

@@ -1,5 +1,4 @@
 #pragma once
-
 #include <SFML/Graphics/Font.hpp>
 
 class AssetManager {

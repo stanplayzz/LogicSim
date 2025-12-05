@@ -43,6 +43,7 @@ public:
 	std::vector<Pin> outPins;
 	bool dragging = false;
 	bool dragPartClicked = false;
+	bool isSelected = false;
 	sf::RectangleShape boundingBox;
 	std::string name;
 	int id = 0; // used for saving/loading
